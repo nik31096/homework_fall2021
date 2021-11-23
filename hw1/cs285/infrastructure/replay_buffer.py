@@ -1,8 +1,9 @@
 from cs285.infrastructure.utils import *
+import numpy as np
+from .pytorch_util import from_numpy
 
 
 class ReplayBuffer(object):
-
     def __init__(self, max_size=1000000):
 
         self.max_size = max_size
@@ -31,8 +32,7 @@ class ReplayBuffer(object):
 
         # convert new rollouts into their component arrays, and append them onto
         # our arrays
-        observations, actions, rewards, next_observations, terminals = (
-            convert_listofrollouts(paths, concat_rew))
+        observations, actions, rewards, next_observations, terminals = (convert_listofrollouts(paths, concat_rew))
 
         if self.obs is None:
             self.obs = observations[-self.max_size:]
@@ -60,9 +60,6 @@ class ReplayBuffer(object):
                 [self.terminals, terminals]
             )[-self.max_size:]
 
-    ########################################
-    ########################################
-
     def sample_random_data(self, batch_size):
         assert (
                 self.obs.shape[0]
@@ -70,14 +67,25 @@ class ReplayBuffer(object):
                 == self.rews.shape[0]
                 == self.next_obs.shape[0]
                 == self.terminals.shape[0]
-        )
+        ), "batch dimension of the tensors should be checked!"
 
-        ## TODO return batch_size number of random entries from each of the 5 component arrays above
-        ## HINT 1: use np.random.permutation to sample random indices
-        ## HINT 2: return corresponding data points from each array (i.e., not different indices from each array)
-        ## HINT 3: look at the sample_recent_data function below
+        # TODO return batch_size number of random entries from each of the 5 component arrays above
+        idxs = np.random.randint(0, self.obs.shape[0], size=batch_size)
+        states, actions, rewards, next_states, dones = [], [], [], [], []
+        for idx in idxs:
+            states.append(self.obs[idx])
+            actions.append(self.acs[idx])
+            rewards.append(self.rews[idx])
+            next_states.append(self.next_obs[idx])
+            dones.append(self.terminals[idx])
 
-        return TODO, TODO, TODO, TODO, TODO
+        states = np.stack(states)
+        actions = np.stack(actions)
+        rewards = np.stack(rewards)
+        next_states = np.stack(next_states)
+        dones = np.stack(dones)
+
+        return states, actions, rewards, next_states, dones
 
     def sample_recent_data(self, batch_size=1):
         return (

@@ -26,22 +26,22 @@ def build_mlp(
         output_activation: Activation = 'identity',
 ):
     """
-        Builds a feedforward neural network
+    Builds a feedforward neural network
 
-        arguments:
-            input_placeholder: placeholder variable for the state (batch_size, input_size)
-            scope: variable scope of the network
+    arguments:
+        input_placeholder: placeholder variable for the state (batch_size, input_size)
+        scope: variable scope of the network
 
-            n_layers: number of hidden layers
-            size: dimension of each hidden layer
-            activation: activation of each hidden layer
+        n_layers: number of hidden layers
+        size: dimension of each hidden layer
+        activation: activation of each hidden layer
 
-            input_size: size of the input layer
-            output_size: size of the output layer
-            output_activation: activation of the output layer
+        input_size: size of the input layer
+        output_size: size of the output layer
+        output_activation: activation of the output layer
 
-        returns:
-            output_placeholder: the result of a forward pass through the hidden layers + the output layer
+    returns:
+        output_placeholder: the result of a forward pass through the hidden layers + the output layer
     """
     if isinstance(activation, str):
         activation = _str_to_activation[activation]
@@ -55,7 +55,7 @@ def build_mlp(
         in_size = size
     layers.append(nn.Linear(in_size, output_size))
     layers.append(output_activation)
-    return nn.Sequential(*layers)
+    return nn.Sequential(*layers).to(device)
 
 
 device = None

@@ -1,9 +1,12 @@
 import os
-from tensorboardX import SummaryWriter
+
+import matplotlib.pyplot as plt
+from torch.utils.tensorboard import SummaryWriter
 import numpy as np
 
+
 class Logger:
-    def __init__(self, log_dir, n_logged_samples=10, summary_writer=None):
+    def __init__(self, log_dir, n_logged_samples=10):
         self._log_dir = log_dir
         print('########################')
         print('logging outputs to ', log_dir)
@@ -27,7 +30,6 @@ class Logger:
         self._summ_writer.add_video('{}'.format(name), video_frames, step, fps=fps)
 
     def log_paths_as_videos(self, paths, step, max_videos_to_save=2, fps=10, video_title='video'):
-
         # reshape the rollouts
         videos = [np.transpose(p['image_obs'], [0, 3, 1, 2]) for p in paths]
 
@@ -35,13 +37,13 @@ class Logger:
         max_videos_to_save = np.min([max_videos_to_save, len(videos)])
         max_length = videos[0].shape[0]
         for i in range(max_videos_to_save):
-            if videos[i].shape[0]>max_length:
+            if videos[i].shape[0] > max_length:
                 max_length = videos[i].shape[0]
 
         # pad rollouts to all be same length
         for i in range(max_videos_to_save):
             if videos[i].shape[0]<max_length:
-                padding = np.tile([videos[i][-1]], (max_length-videos[i].shape[0],1,1,1))
+                padding = np.tile([videos[i][-1]], (max_length-videos[i].shape[0], 1, 1, 1))
                 videos[i] = np.concatenate([videos[i], padding], 0)
 
         # log videos to tensorboard event file
@@ -59,7 +61,7 @@ class Logger:
 
     def log_graph(self, array, name, step, phase):
         """figure: matplotlib.pyplot figure handle"""
-        im = plot_graph(array)
+        im = plt.imshow(array)
         self._summ_writer.add_image('{}_{}'.format(name, phase), im, step)
 
     def dump_scalars(self, log_path=None):
@@ -68,7 +70,3 @@ class Logger:
 
     def flush(self):
         self._summ_writer.flush()
-
-
-
-

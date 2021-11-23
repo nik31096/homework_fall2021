@@ -14,7 +14,6 @@ from cs285.policies.base_policy import BasePolicy
 
 
 class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
-
     def __init__(self,
                  ac_dim,
                  ob_dim,
@@ -24,6 +23,7 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
                  learning_rate=1e-4,
                  training=True,
                  nn_baseline=False,
+                 device='cpu',
                  **kwargs
                  ):
         super().__init__(**kwargs)
@@ -37,6 +37,7 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
         self.learning_rate = learning_rate
         self.training = training
         self.nn_baseline = nn_baseline
+        self.device = device
 
         if self.discrete:
             self.logits_na = ptu.build_mlp(
@@ -45,7 +46,7 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
                 n_layers=self.n_layers,
                 size=self.size,
             )
-            self.logits_na.to(ptu.device)
+            self.logits_na.to(self.device)
             self.mean_net = None
             self.logstd = None
             self.optimizer = optim.Adam(self.logits_na.parameters(),
@@ -57,33 +58,30 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
                 output_size=self.ac_dim,
                 n_layers=self.n_layers, size=self.size,
             )
-            self.mean_net.to(ptu.device)
+            self.mean_net.to(self.device)
             self.logstd = nn.Parameter(
-                torch.zeros(self.ac_dim, dtype=torch.float32, device=ptu.device)
+                torch.zeros(self.ac_dim, dtype=torch.float32, device=self.device)
             )
-            self.logstd.to(ptu.device)
+            self.logstd.to(self.device)
             self.optimizer = optim.Adam(
                 itertools.chain([self.logstd], self.mean_net.parameters()),
                 self.learning_rate
             )
 
-    ##################################
-
     def save(self, filepath):
         torch.save(self.state_dict(), filepath)
 
-    ##################################
-
     def get_action(self, obs: np.ndarray) -> np.ndarray:
         if len(obs.shape) > 1:
-            observation = obs
+            obs = obs
         else:
-            observation = obs[None]
+            obs = obs[None]
 
-        # TODO return the action that the policy prescribes
-        raise NotImplementedError
+        d = self.forward(obs)
+        action = ptu.to_numpy(d.sample())
 
-    # update/train this policy
+        return action
+
     def update(self, observations, actions, **kwargs):
         raise NotImplementedError
 
@@ -93,11 +91,12 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
     # return more flexible objects, such as a
     # `torch.distributions.Distribution` object. It's up to you!
     def forward(self, observation: torch.FloatTensor) -> Any:
-        raise NotImplementedError
+        obs = ptu.from_numpy(observation).to(self.device)
+        action_mean = self.mean_net(obs)
+        d = distributions.Normal(loc=action_mean, scale=self.logstd.exp())
 
+        return d
 
-#####################################################
-#####################################################
 
 class MLPPolicySL(MLPPolicy):
     def __init__(self, ac_dim, ob_dim, n_layers, size, **kwargs):
@@ -109,7 +108,15 @@ class MLPPolicySL(MLPPolicy):
             adv_n=None, acs_labels_na=None, qvals=None
     ):
         # TODO: update the policy and return the loss
-        loss = TODO
+        d = self.forward(observations)
+        pred_actions = d.rsample()
+        if not isinstance(actions, torch.Tensor):
+            actions = ptu.from_numpy(actions)
+        loss = self.loss(pred_actions, actions)
+        loss.backward()
+        self.optimizer.step()
+        self.optimizer.zero_grad()
+
         return {
             # You can add extra logging information here, but keep this line
             'Training Loss': ptu.to_numpy(loss),

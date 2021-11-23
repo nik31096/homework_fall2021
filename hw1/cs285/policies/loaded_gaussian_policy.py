@@ -28,8 +28,7 @@ def read_layer(l):
 class LoadedGaussianPolicy(BasePolicy, nn.Module):
     def __init__(self, filename, **kwargs):
         super().__init__(**kwargs)
-
-        with open(filename, 'rb') as f:
+        with open("../../" + filename, 'rb') as f:
             data = pickle.loads(f.read())
 
         self.nonlin_type = data['nonlin_type']
@@ -53,10 +52,8 @@ class LoadedGaussianPolicy(BasePolicy, nn.Module):
         # Build the policy. First, observation normalization.
         assert list(self.policy_params['obsnorm'].keys()) == ['Standardizer']
         obsnorm_mean = self.policy_params['obsnorm']['Standardizer']['mean_1_D']
-        obsnorm_meansq = self.policy_params['obsnorm']['Standardizer'][
-            'meansq_1_D']
-        obsnorm_stdev = np.sqrt(
-            np.maximum(0, obsnorm_meansq - np.square(obsnorm_mean)))
+        obsnorm_meansq = self.policy_params['obsnorm']['Standardizer']['meansq_1_D']
+        obsnorm_stdev = np.sqrt(np.maximum(0, obsnorm_meansq - np.square(obsnorm_mean)))
         print('obs', obsnorm_mean.shape, obsnorm_stdev.shape)
 
         self.obs_norm_mean = nn.Parameter(ptu.from_numpy(obsnorm_mean))
@@ -83,8 +80,6 @@ class LoadedGaussianPolicy(BasePolicy, nn.Module):
             h = layer(h)
             h = self.non_lin(h)
         return self.output_layer(h)
-
-    ##################################
 
     def update(self, obs_no, acs_na, adv_n=None, acs_labels_na=None):
         raise NotImplementedError("""

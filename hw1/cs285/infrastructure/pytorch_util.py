@@ -45,9 +45,17 @@ def build_mlp(
     if isinstance(output_activation, str):
         output_activation = _str_to_activation[output_activation]
 
-    # TODO: return a MLP. This should be an instance of nn.Module
-    # Note: nn.Sequential is an instance of nn.Module.
-    raise NotImplementedError
+    model = nn.Sequential()
+    model.add_module("input_layer", nn.Linear(input_size, size))
+    model.add_module("input_activation", activation)
+    for i in range(n_layers):
+        model.add_module(f"layer_{i+1}", nn.Linear(size, size))
+        model.add_module(f"activation_{i+1}", activation)
+
+    model.add_module("output_layer", nn.Linear(size, output_size))
+    model.add_module("output_activation", output_activation)
+
+    return model.to(device)
 
 
 device = None
@@ -68,8 +76,8 @@ def set_device(gpu_id):
 
 
 def from_numpy(*args, **kwargs):
-    return torch.from_numpy(*args, **kwargs).float().to(device)
+    return torch.from_numpy(*args, **kwargs).float()
 
 
 def to_numpy(tensor):
-    return tensor.to('cpu').detach().numpy()
+    return tensor.cpu().detach().numpy()
