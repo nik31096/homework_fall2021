@@ -7,7 +7,6 @@ from cs285.infrastructure.dqn_utils import get_env_kwargs
 
 
 class Q_Trainer(object):
-
     def __init__(self, params):
         self.params = params
 
@@ -15,13 +14,11 @@ class Q_Trainer(object):
             'num_agent_train_steps_per_iter': params['num_agent_train_steps_per_iter'],
             'num_critic_updates_per_agent_update': params['num_critic_updates_per_agent_update'],
             'train_batch_size': params['batch_size'],
-            'double_q': params['double_q'],
+            'double_q': params['double_q']
         }
 
         env_args = get_env_kwargs(params['env_name'])
-
         self.agent_params = {**train_args, **env_args, **params}
-
         self.params['agent_class'] = DQNAgent
         self.params['agent_params'] = self.agent_params
         self.params['train_batch_size'] = params['batch_size']
@@ -32,12 +29,12 @@ class Q_Trainer(object):
     def run_training_loop(self):
         self.rl_trainer.run_training_loop(
             self.agent_params['num_timesteps'],
-            collect_policy = self.rl_trainer.agent.actor,
-            eval_policy = self.rl_trainer.agent.actor,
+            collect_policy=self.rl_trainer.agent.actor,
+            eval_policy=self.rl_trainer.agent.actor,
         )
 
-def main():
 
+def main():
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -68,10 +65,7 @@ def main():
 
     # convert to dictionary
     params = vars(args)
-    params['video_log_freq'] = -1 # This param is not used for DQN
-    ##################################
-    ### CREATE DIRECTORY FOR LOGGING
-    ##################################
+    params['video_log_freq'] = -1  # This param is not used for DQN
 
     data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../../data')
 

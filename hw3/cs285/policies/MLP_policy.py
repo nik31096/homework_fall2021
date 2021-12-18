@@ -13,7 +13,6 @@ from cs285.policies.base_policy import BasePolicy
 
 
 class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
-
     def __init__(self,
                  ac_dim,
                  ob_dim,
@@ -50,8 +49,8 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
         else:
             self.logits_na = None
             self.mean_net = ptu.build_mlp(input_size=self.ob_dim,
-                                      output_size=self.ac_dim,
-                                      n_layers=self.n_layers, size=self.size)
+                                          output_size=self.ac_dim,
+                                          n_layers=self.n_layers, size=self.size)
             self.logstd = nn.Parameter(
                 torch.zeros(self.ac_dim, dtype=torch.float32, device=ptu.device)
             )
@@ -77,16 +76,21 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
         else:
             self.baseline = None
 
-    ##################################
-
     def save(self, filepath):
         torch.save(self.state_dict(), filepath)
-
-    ##################################
 
     # query the policy with observation(s) to get selected action(s)
     def get_action(self, obs: np.ndarray) -> np.ndarray:
         # TODO: get this from hw1 or hw2
+        obs = ptu.from_numpy(obs)
+        if self.logits_na is not None:
+            logits = self.logits_na(obs)
+            probs = torch.softmax(logits, dim=0)
+            action = np.random.choice(self.ac_dim, p=probs)
+        else:
+            dist = self.forward(obs)
+            action = dist.sample()
+
         return action
 
     # update/train this policy
@@ -100,14 +104,25 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
     # `torch.distributions.Distribution` object. It's up to you!
     def forward(self, observation: torch.FloatTensor):
         # TODO: get this from hw1 or hw2
+        action_distribution = distributions.Normal(self.mean_net(observation), self.logstd.exp())
+
         return action_distribution
-
-
-#####################################################
-#####################################################
 
 
 class MLPPolicyAC(MLPPolicy):
     def update(self, observations, actions, adv_n=None):
         # TODO: update the policy and return the loss
+        assert adv_n, "Can't do actor update without advantage function"
+        if not isinstance(observations, torch.Tensor):
+            observations = ptu.from_numpy(observations)
+
+        action_dist = self.forward(observations)
+        log_probs = action_dist.log_prob(actions)
+        print(log_probs.shape, adv_n.shape)
+        loss = torch.mean(log_probs*adv_n)
+
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
+
         return loss.item()
