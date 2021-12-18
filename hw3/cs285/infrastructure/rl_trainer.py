@@ -116,8 +116,8 @@ class RL_Trainer(object):
         print_period = 1000 if isinstance(self.agent, DQNAgent) else 1
 
         for itr in trange(n_iter):
-            if itr % print_period == 0:
-                print("\n\n********** Iteration %i ************"%itr)
+            # if itr % print_period == 0:
+            #     print("\n\n********** Iteration %i ************"%itr)
 
             # decide if videos should be rendered/logged at this iteration
             if itr % self.params['video_log_freq'] == 0 and self.params['video_log_freq'] != -1:
@@ -216,7 +216,7 @@ class RL_Trainer(object):
         return paths, envsteps_this_batch, train_video_paths
 
     def train_agent(self):
-        print('\nTraining agent using sampled data from replay buffer...')
+        # print('\nTraining agent using sampled data from replay buffer...')
         all_logs = []
         for train_step in range(self.params['num_agent_train_steps_per_iter']):
             # TODO sample some data from the data buffer

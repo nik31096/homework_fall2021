@@ -61,9 +61,7 @@ class DQNCritic(BaseCritic):
         terminal_n = ptu.from_numpy(terminal_n)
 
         qa_t_values = self.q_net(ob_no)
-        print(qa_t_values, ac_na)
         q_t_values = torch.gather(qa_t_values, 1, ac_na.unsqueeze(1)).squeeze(1)
-        print(q_t_values)
         
         # TODO compute the Q-values from the target network 
         qa_tp1_values = self.q_net_target(next_ob_no)
@@ -75,8 +73,8 @@ class DQNCritic(BaseCritic):
             # target Q-network. Please review Lecture 8 for more details,
             # and page 4 of https://arxiv.org/pdf/1509.06461.pdf is also a good reference.
             q_values = self.q_net(next_ob_no)
-            best_actions = torch.argmax(q_values, dim=-1)
-            q_tp1 = qa_tp1_values[best_actions]
+            best_actions = torch.argmax(q_values, dim=-1).to(torch.long)
+            q_tp1 = torch.gather(qa_tp1_values, dim=1, index=best_actions)
         else:
             q_tp1, _ = qa_tp1_values.max(dim=1)
 
