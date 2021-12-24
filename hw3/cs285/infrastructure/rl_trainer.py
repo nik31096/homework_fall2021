@@ -15,7 +15,7 @@ from cs285.infrastructure import utils
 from cs285.infrastructure.logger import Logger
 
 from cs285.agents.dqn_agent import DQNAgent
-from cs285.infrastructure.dqn_utils import get_wrapper_by_name, register_custom_envs
+from cs285.infrastructure.dqn_utils import get_wrapper_by_name, register_custom_envs, wrap_deepmind
 
 # how many rollouts to save as videos to tensorboard
 MAX_NVIDEO = 2
@@ -27,6 +27,12 @@ class RL_Trainer(object):
         # Get params, create logger
         self.params = params
         self.logger = Logger(self.params['logdir'])
+
+        if self.params['env_name'] in ['MsPacman-v0']:
+            self.params['agent_params']['img_based'] = True
+            self.params['env_wrappers'] = wrap_deepmind
+        else:
+            self.params['agent_params']['img_based'] = False
 
         # Set random seeds
         seed = self.params['seed']
@@ -86,7 +92,7 @@ class RL_Trainer(object):
 
         # simulation timestep, will be used for video saving
         if 'model' in dir(self.env):
-            self.fps = 1/self.env.model.opt.timestep
+            self.fps = 1 / self.env.model.opt.timestep
         elif 'env_wrappers' in self.params:
             self.fps = 30  # This is not actually used when using the Monitor wrapper
         elif 'video.frames_per_second' in self.env.env.metadata.keys():
@@ -144,10 +150,8 @@ class RL_Trainer(object):
                 use_batchsize = self.params['batch_size']
                 if itr == 0:
                     use_batchsize = self.params['batch_size_initial']
-                paths, envsteps_this_batch, train_video_paths = (
-                    self.collect_training_trajectories(
-                        itr, initial_expertdata, collect_policy, use_batchsize)
-                )
+                paths, envsteps_this_batch, train_video_paths = \
+                    self.collect_training_trajectories(itr, initial_expertdata, collect_policy, use_batchsize)
 
             self.total_envsteps += envsteps_this_batch
 
@@ -200,7 +204,7 @@ class RL_Trainer(object):
         # TODO collect `batch_size` samples to be used for training
         # HINT1: use sample_trajectories from utils
         # HINT2: you want each of these collected rollouts to be of length self.params['ep_len']
-        print("\nCollecting data to be used for training...")
+        # print("\nCollecting data to be used for training...")
         paths, envsteps_this_batch = utils.sample_trajectories(self.env, collect_policy,
                                                                min_timesteps_per_batch=self.params['batch_size'],
                                                                max_path_length=self.params['ep_len'])

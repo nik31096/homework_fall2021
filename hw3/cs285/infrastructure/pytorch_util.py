@@ -26,18 +26,18 @@ def build_mlp(
         output_activation: Activation = 'identity',
 ):
     """
-        Builds a feedforward neural network
-        arguments:
-            input_placeholder: placeholder variable for the state (batch_size, input_size)
-            scope: variable scope of the network
-            n_layers: number of hidden layers
-            size: dimension of each hidden layer
-            activation: activation of each hidden layer
-            input_size: size of the input layer
-            output_size: size of the output layer
-            output_activation: activation of the output layer
-        returns:
-            output_placeholder: the result of a forward pass through the hidden layers + the output layer
+    `Builds a feedforward neural network
+    arguments:
+        input_placeholder: placeholder variable for the state (batch_size, input_size)
+        scope: variable scope of the network
+        n_layers: number of hidden layers
+        size: dimension of each hidden layer
+        activation: activation of each hidden layer
+        input_size: size of the input layer
+        output_size: size of the output layer
+        output_activation: activation of the output layer
+    returns:
+    `    output_placeholder: the result of a forward pass through the hidden layers + the output layer
     """
     if isinstance(activation, str):
         activation = _str_to_activation[activation]
@@ -52,6 +52,33 @@ def build_mlp(
     layers.append(nn.Linear(in_size, output_size))
     layers.append(output_activation)
     return nn.Sequential(*layers)
+
+
+def build_cnn(
+        output_size: int,
+        activation: Activation = 'relu',
+        output_activation: Activation = 'identity',
+):
+    if isinstance(activation, str):
+        activation = _str_to_activation[activation]
+    if isinstance(output_activation, str):
+        output_activation = _str_to_activation[output_activation]
+
+    model = nn.Sequential(
+        nn.Conv2d(4, 64, kernel_size=(7, 7), stride=(4, 4), padding=3),
+        activation,
+        nn.Conv2d(64, 128, kernel_size=(5, 5), stride=(2, 2), padding=2),
+        activation,
+        nn.Conv2d(128, 256, kernel_size=(5, 5), stride=(2, 2), padding=2),
+        activation,
+        nn.Conv2d(256, 512, kernel_size=(3, 3), stride=(2, 2), padding=1),
+        activation,
+        nn.Flatten(),
+        nn.Linear(4608, output_size),
+        output_activation
+    )
+
+    return model
 
 
 device = None

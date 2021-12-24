@@ -13,17 +13,19 @@ from cs285.policies.base_policy import BasePolicy
 
 
 class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
-    def __init__(self,
-                 ac_dim,
-                 ob_dim,
-                 n_layers,
-                 size,
-                 discrete=False,
-                 learning_rate=1e-4,
-                 training=True,
-                 nn_baseline=False,
-                 **kwargs
-                 ):
+    def __init__(
+            self,
+            ac_dim,
+            ob_dim,
+            n_layers,
+            size,
+            discrete=False,
+            learning_rate=1e-4,
+            training=True,
+            nn_baseline=False,
+            img_based=False,
+            **kwargs
+    ):
         super().__init__(**kwargs)
 
         # init vars
@@ -35,22 +37,32 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
         self.learning_rate = learning_rate
         self.training = training
         self.nn_baseline = nn_baseline
+        self.img_based = img_based
 
         if self.discrete:
-            self.logits_na = ptu.build_mlp(input_size=self.ob_dim,
-                                           output_size=self.ac_dim,
-                                           n_layers=self.n_layers,
-                                           size=self.size)
+            if not self.img_based:
+                self.logits_na = ptu.build_mlp(
+                    input_size=self.ob_dim,
+                    output_size=self.ac_dim,
+                    n_layers=self.n_layers,
+                    size=self.size
+                )
+            else:
+                self.logits_na = ptu.build_cnn(
+                    output_size=self.ac_dim
+                )
             self.logits_na.to(ptu.device)
             self.mean_net = None
             self.logstd = None
-            self.optimizer = optim.Adam(self.logits_na.parameters(),
-                                        self.learning_rate)
+            self.optimizer = optim.Adam(self.logits_na.parameters(), lr=self.learning_rate)
         else:
             self.logits_na = None
-            self.mean_net = ptu.build_mlp(input_size=self.ob_dim,
-                                          output_size=self.ac_dim,
-                                          n_layers=self.n_layers, size=self.size)
+            self.mean_net = ptu.build_mlp(
+                input_size=self.ob_dim,
+                output_size=self.ac_dim,
+                n_layers=self.n_layers,
+                size=self.size
+            )
             self.logstd = nn.Parameter(
                 torch.zeros(self.ac_dim, dtype=torch.float32, device=ptu.device)
             )
@@ -58,7 +70,7 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
             self.logstd.to(ptu.device)
             self.optimizer = optim.Adam(
                 itertools.chain([self.logstd], self.mean_net.parameters()),
-                self.learning_rate
+                lr=self.learning_rate
             )
 
         if nn_baseline:
@@ -82,14 +94,11 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
     # query the policy with observation(s) to get selected action(s)
     def get_action(self, obs: np.ndarray) -> np.ndarray:
         # TODO: get this from hw1 or hw2
+        if len(obs.shape) == 3:
+            obs = obs[np.newaxis, ...]
         obs = ptu.from_numpy(obs)
-        if self.logits_na is not None:
-            logits = self.logits_na(obs)
-            probs = torch.softmax(logits, dim=0)
-            action = np.random.choice(self.ac_dim, p=probs)
-        else:
-            dist = self.forward(obs)
-            action = dist.sample()
+        dist = self.forward(obs)
+        action = dist.sample().cpu().data.numpy()
 
         return action
 
@@ -104,22 +113,37 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
     # `torch.distributions.Distribution` object. It's up to you!
     def forward(self, observation: torch.FloatTensor):
         # TODO: get this from hw1 or hw2
-        action_distribution = distributions.Normal(self.mean_net(observation), self.logstd.exp())
+        if self.discrete:
+            logits = self.logits_na(observation)
+            probs = torch.softmax(logits, dim=-1)
+            action_distribution = distributions.Categorical(probs=probs)
+        else:
+            # mean = self.mean_net(observation)
+            # action_distribution = distributions.Normal(loc=mean, scale=self.logstd.exp())
+            batch_mean = self.mean_net(observation)
+            scale_tril = torch.diag(torch.exp(self.logstd))
+            batch_dim = batch_mean.shape[0]
+            batch_scale_tril = scale_tril.repeat(batch_dim, 1, 1)
+            action_distribution = distributions.MultivariateNormal(batch_mean, scale_tril=batch_scale_tril)
 
         return action_distribution
 
 
 class MLPPolicyAC(MLPPolicy):
     def update(self, observations, actions, adv_n=None):
-        # TODO: update the policy and return the loss
-        assert adv_n, "Can't do actor update without advantage function"
+        assert adv_n is not None, "Can't do actor update without advantage function"
         if not isinstance(observations, torch.Tensor):
             observations = ptu.from_numpy(observations)
 
+        if not isinstance(actions, torch.Tensor):
+            actions = ptu.from_numpy(actions)
+
+        if not isinstance(adv_n, torch.Tensor):
+            adv_n = ptu.from_numpy(adv_n)
+
         action_dist = self.forward(observations)
         log_probs = action_dist.log_prob(actions)
-        print(log_probs.shape, adv_n.shape)
-        loss = torch.mean(log_probs*adv_n)
+        loss = -torch.mean(log_probs*adv_n)
 
         self.optimizer.zero_grad()
         loss.backward()

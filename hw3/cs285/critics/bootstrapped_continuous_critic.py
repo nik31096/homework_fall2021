@@ -34,18 +34,20 @@ class BootstrappedContinuousCritic(nn.Module, BaseCritic):
         self.num_target_updates = hparams['num_target_updates']
         self.num_grad_steps_per_target_update = hparams['num_grad_steps_per_target_update']
         self.gamma = hparams['gamma']
-        self.critic_network = ptu.build_mlp(
-            self.ob_dim,
-            1,
-            n_layers=self.n_layers,
-            size=self.size,
-        )
+        if not hparams['img_based']:
+            self.critic_network = ptu.build_mlp(
+                self.ob_dim,
+                1,
+                n_layers=self.n_layers,
+                size=self.size,
+            )
+        else:
+            self.critic_network = ptu.build_cnn(
+                output_size=1
+            )
         self.critic_network.to(ptu.device)
         self.loss = nn.MSELoss()
-        self.optimizer = optim.Adam(
-            self.critic_network.parameters(),
-            self.learning_rate,
-        )
+        self.optimizer = optim.Adam(self.critic_network.parameters(), lr=self.learning_rate)
 
     def forward(self, obs):
         return self.critic_network(obs).squeeze(1)
@@ -55,7 +57,7 @@ class BootstrappedContinuousCritic(nn.Module, BaseCritic):
         predictions = self(obs)
         return ptu.to_numpy(predictions)
 
-    def update(self, ob_no, ac_na, next_ob_no, reward_n, terminal_n):
+    def update(self, ob_no, ac_na, reward_n, next_ob_no, terminal_n):
         """
         Update the parameters of the critic.
 
@@ -65,9 +67,9 @@ class BootstrappedContinuousCritic(nn.Module, BaseCritic):
         arguments:
             ob_no: shape: (sum_of_path_lengths, ob_dim)
             ac_na: length: sum_of_path_lengths. The action taken at the current step.
-            next_ob_no: shape: (sum_of_path_lengths, ob_dim). The observation after taking one step forward
             reward_n: length: sum_of_path_lengths. Each element in reward_n is a scalar containing
                 the reward for each timestep
+            next_ob_no: shape: (sum_of_path_lengths, ob_dim). The observation after taking one step forward
             terminal_n: length: sum_of_path_lengths. Each element in terminal_n is either 1 if the episode ended
                 at that timestep of 0 if the episode did not end
 
@@ -99,13 +101,18 @@ class BootstrappedContinuousCritic(nn.Module, BaseCritic):
         if not isinstance(terminal_n, torch.Tensor):
             terminal_n = ptu.from_numpy(terminal_n)
 
-        values = self.critic_network(ob_no).squeeze()
-        next_values = self.critic_network(next_ob_no).squeeze()
-        targets = reward_n + self.gamma * (1 - terminal_n) * next_values
-        loss = self.loss(values, targets)
+        for target_update in range(self.num_target_updates):
+            with torch.no_grad():
+                next_values = self.critic_network(next_ob_no).squeeze()
+                targets = reward_n + self.gamma * (1 - terminal_n) * next_values
 
-        self.optimizer.zero_grad()
-        loss.backward()
-        self.optimizer.step()
+            for step in range(self.num_grad_steps_per_target_update):
+                print("Hello!")
+                values = self.critic_network(ob_no).squeeze()
+                loss = self.loss(values, targets)
+
+                self.optimizer.zero_grad()
+                loss.backward()
+                self.optimizer.step()
 
         return loss.item()

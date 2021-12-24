@@ -9,11 +9,11 @@ def calculate_mean_prediction_error(env, action_sequence, models, data_statistic
     true_states = perform_actions(env, action_sequence)['observation']
 
     # predicted
-    ob = np.expand_dims(true_states[0],0)
+    ob = np.expand_dims(true_states[0], 0)
     pred_states = []
     for ac in action_sequence:
         pred_states.append(ob)
-        action = np.expand_dims(ac,0)
+        action = np.expand_dims(ac, 0)
         ob = model.get_prediction(ob, action, data_statistics)
     pred_states = np.squeeze(pred_states)
 
@@ -47,10 +47,10 @@ def perform_actions(env, actions):
 
 
 def mean_squared_error(a, b):
-    return np.mean((a-b)**2)
+    return np.mean((a - b)**2)
 
 
-def sample_trajectory(env, policy, max_path_length, render=False, render_mode=('rgb_array')):
+def sample_trajectory(env, policy, max_path_length, render=False, render_mode='rgb_array'):
     # initialize env for the beginning of a new rollout
     ob = env.reset()
 
@@ -70,8 +70,16 @@ def sample_trajectory(env, policy, max_path_length, render=False, render_mode=('
                 time.sleep(env.model.opt.timestep)
 
         # use the most recent ob to decide what to do
-        obs.append(ob)
-        ac = policy.get_action(ob)
+
+        if policy.img_based:
+            obs.append(np.transpose(ob, [2, 0, 1]))
+            obs_history = np.concatenate(obs[-4:], axis=0)
+            if obs_history.shape[0] < 4:
+                obs_history = np.pad(obs_history, ((0, 4 - obs_history.shape[0]), (0, 0), (0, 0)))
+            ac = policy.get_action(obs_history)
+        else:
+            obs.append(ob)
+            ac = policy.get_action(ob)
         ac = ac[0]
         acs.append(ac)
 
@@ -80,7 +88,11 @@ def sample_trajectory(env, policy, max_path_length, render=False, render_mode=('
 
         # record result of taking that action
         steps += 1
-        next_obs.append(ob)
+        if policy.img_based:
+            next_obs.append(np.transpose(ob, [2, 0, 1]))
+        else:
+            next_obs.append(ob)
+
         rewards.append(rew)
 
         # TODO end the rollout if the rollout ended
@@ -94,7 +106,7 @@ def sample_trajectory(env, policy, max_path_length, render=False, render_mode=('
     return Path(obs, image_obs, acs, rewards, next_obs, terminals)
 
 
-def sample_trajectories(env, policy, min_timesteps_per_batch, max_path_length, render=False, render_mode=('rgb_array')):
+def sample_trajectories(env, policy, min_timesteps_per_batch, max_path_length, render=False, render_mode='rgb_array'):
     """
     Collect rollouts until we have collected min_timesteps_per_batch steps.
 

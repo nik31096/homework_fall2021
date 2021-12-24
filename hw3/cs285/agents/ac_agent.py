@@ -1,7 +1,8 @@
 from collections import OrderedDict
+from tqdm import trange
 
 from cs285.critics.bootstrapped_continuous_critic import BootstrappedContinuousCritic
-from cs285.infrastructure.replay_buffer import ReplayBuffer
+from cs285.infrastructure.replay_buffer import ReplayBuffer, ReplayBufferAtari
 from cs285.infrastructure.utils import *
 from cs285.policies.MLP_policy import MLPPolicyAC
 from cs285.agents.base_agent import BaseAgent
@@ -12,9 +13,14 @@ class ACAgent(BaseAgent):
         super(ACAgent, self).__init__()
 
         self.env = env
+        if agent_params.get('env_wrappers', None) is not None:
+            self.env = agent_params['env_wrappers'](self.env)
         self.agent_params = agent_params
 
         self.gamma = self.agent_params['gamma']
+        self.advantage_mode = self.agent_params['advantage_mode']
+        self._lambda = self.agent_params.get('lambda', None)
+        self.n_step = self.agent_params.get('lambda', None)
         self.standardize_advantages = self.agent_params['standardize_advantages']
 
         self.actor = MLPPolicyAC(
@@ -24,25 +30,21 @@ class ACAgent(BaseAgent):
             size=self.agent_params['size'],
             discrete=self.agent_params['discrete'],
             learning_rate=self.agent_params['learning_rate'],
+            img_based=self.agent_params['img_based']
         )
         self.critic = BootstrappedContinuousCritic(self.agent_params)
 
-        self.replay_buffer = ReplayBuffer()
+        if self.agent_params['img_based']:
+            self.replay_buffer = ReplayBufferAtari()
+        else:
+            self.replay_buffer = ReplayBuffer()
 
     def train(self, ob_no, ac_na, re_n, next_ob_no, terminal_n):
-        # TODO Implement the following pseudocode:
-        # for agent_params['num_critic_updates_per_agent_update'] steps,
-        #     update the critic
-
-        # advantage = estimate_advantage(...)
-
-        # for agent_params['num_actor_updates_per_agent_update'] steps,
-        #     update the actor
-        for _ in range(self.agent_params['num_critic_updates_per_agent_update']):
+        for _ in trange(self.agent_params['num_critic_updates_per_agent_update']):
             critic_loss = self.critic.update(ob_no, ac_na, re_n, next_ob_no, terminal_n)
 
         advantage = self.estimate_advantage(ob_no, next_ob_no, re_n, terminal_n)
-        for _ in range(self.agent_params['num_actor_updates_per_agent_update']):
+        for _ in trange(self.agent_params['num_actor_updates_per_agent_update']):
             actor_loss = self.actor.update(ob_no, ac_na, advantage)
 
         loss = OrderedDict()
@@ -52,16 +54,30 @@ class ACAgent(BaseAgent):
         return loss
 
     def estimate_advantage(self, ob_no, next_ob_no, re_n, terminal_n):
-        # TODO Implement the following pseudocode:
-        # 1) query the critic with ob_no, to get V(s)
-        # 2) query the critic with next_ob_no, to get V(s')
-        # 3) estimate the Q value as Q(s, a) = r(s, a) + gamma*V(s')
-        # HINT: Remember to cut off the V(s') term (ie set it to 0) at terminal states (ie terminal_n=1)
-        # 4) calculate advantage (adv_n) as A(s, a) = Q(s, a) - V(s)
-        adv_n = TODO
+        values = self.critic.forward_np(ob_no)
+        next_values = self.critic.forward_np(next_ob_no)
+        if self.advantage_mode == 'td(0)':
+            adv_n = re_n + self.gamma * (1 - terminal_n) * next_values - values
+
+        elif self.advantage_mode == 'gae':
+            adv_n = np.zeros((ob_no.shape[0] + 1))
+            for t in reversed(range(ob_no.shape[0])):
+                delta = re_n[t] + self.gamma * (1 - terminal_n[t]) * next_values[t] - values[t]
+                adv_n[t] = delta + self.gamma*self._lambda*adv_n[t+1]
+            adv_n = adv_n[:-1]
+
+        elif self.advantage_mode == 'n-step return':
+            # adv_n = np.zeros((ob_no.shape[0] + 1))
+            # for t in range(ob_no.shape[0]):
+            raise NotImplementedError("Finish implementation!!")
+
+        else:
+            raise ValueError("No such method for advantage estimation is supported! "
+                             "Supported options are: 'td(0)', 'gae', 'n-step return'.")
 
         if self.standardize_advantages:
-            adv_n = (adv_n - np.mean(adv_n)) / (np.std(adv_n) + 1e-8)
+            adv_n = (adv_n - adv_n.mean()) / (adv_n.std() + 1e-8)
+
         return adv_n
 
     def add_to_replay_buffer(self, paths):
