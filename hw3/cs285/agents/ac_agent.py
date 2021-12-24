@@ -1,5 +1,4 @@
 from collections import OrderedDict
-from tqdm import trange
 
 from cs285.critics.bootstrapped_continuous_critic import BootstrappedContinuousCritic
 from cs285.infrastructure.replay_buffer import ReplayBuffer, ReplayBufferAtari
@@ -40,11 +39,11 @@ class ACAgent(BaseAgent):
             self.replay_buffer = ReplayBuffer()
 
     def train(self, ob_no, ac_na, re_n, next_ob_no, terminal_n):
-        for _ in trange(self.agent_params['num_critic_updates_per_agent_update']):
+        for _ in range(self.agent_params['num_critic_updates_per_agent_update']):
             critic_loss = self.critic.update(ob_no, ac_na, re_n, next_ob_no, terminal_n)
 
         advantage = self.estimate_advantage(ob_no, next_ob_no, re_n, terminal_n)
-        for _ in trange(self.agent_params['num_actor_updates_per_agent_update']):
+        for _ in range(self.agent_params['num_actor_updates_per_agent_update']):
             actor_loss = self.actor.update(ob_no, ac_na, advantage)
 
         loss = OrderedDict()

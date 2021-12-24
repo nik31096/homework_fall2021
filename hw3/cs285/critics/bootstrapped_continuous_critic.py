@@ -107,7 +107,6 @@ class BootstrappedContinuousCritic(nn.Module, BaseCritic):
                 targets = reward_n + self.gamma * (1 - terminal_n) * next_values
 
             for step in range(self.num_grad_steps_per_target_update):
-                print("Hello!")
                 values = self.critic_network(ob_no).squeeze()
                 loss = self.loss(values, targets)
 
