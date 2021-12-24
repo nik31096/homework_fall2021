@@ -74,7 +74,7 @@ class DQNCritic(BaseCritic):
             # and page 4 of https://arxiv.org/pdf/1509.06461.pdf is also a good reference.
             q_values = self.q_net(next_ob_no)
             best_actions = torch.argmax(q_values, dim=-1).to(torch.long)
-            q_tp1 = torch.gather(qa_tp1_values, dim=1, index=best_actions)
+            q_tp1 = torch.gather(qa_tp1_values, dim=1, index=best_actions.unsqueeze(dim=-1)).squeeze()
         else:
             q_tp1, _ = qa_tp1_values.max(dim=1)
 
@@ -99,7 +99,10 @@ class DQNCritic(BaseCritic):
         for target_param, param in zip(self.q_net_target.parameters(), self.q_net.parameters()):
             target_param.data.copy_(param.data)
 
-    def qa_values(self, obs):
+    def qa_values(self, obs, to_numpy=True):
         obs = ptu.from_numpy(obs)
         qa_values = self.q_net(obs)
-        return ptu.to_numpy(qa_values)
+        if to_numpy:
+            return ptu.to_numpy(qa_values)
+        else:
+            return qa_values

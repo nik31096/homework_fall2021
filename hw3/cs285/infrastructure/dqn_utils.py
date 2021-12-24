@@ -34,7 +34,7 @@ def get_env_kwargs(env_name):
             'learning_starts': 50000,
             'target_update_freq': 10000,
             'replay_buffer_size': int(1e6),
-            'num_timesteps': int(2e8),
+            'num_timesteps': int(1e7),
             'q_func': create_atari_q_network,
             'learning_freq': 4,
             'grad_norm_clipping': 10,
@@ -140,7 +140,7 @@ def atari_optimizer(num_timesteps):
             (num_timesteps / 40, 1e-1),
             (num_timesteps / 8, 5e-2),
         ],
-        outside_value=5e-2,
+        outside_value=1e-2,
     )
 
     return OptimizerSpec(

@@ -1,6 +1,7 @@
 import random
 
 import numpy as np
+import torch
 
 from cs285.infrastructure.dqn_utils import MemoryOptimizedReplayBuffer, PiecewiseSchedule
 from cs285.policies.argmax_policy import ArgMaxPolicy
@@ -23,6 +24,15 @@ class DQNAgent(object):
         self.replay_buffer_idx = None
         self.exploration = agent_params['exploration_schedule']
         self.optimizer_spec = agent_params['optimizer_spec']
+
+        self.exploration_strategy = agent_params['exploration_strategy']
+        if self.exploration_strategy == 'boltzmann':
+            self.temperature_schedule = PiecewiseSchedule([
+                (0, 1.),
+                (agent_params['num_timesteps'] / 8, .6),
+                (agent_params['num_timesteps'] / 4, .4),
+                (agent_params['num_timesteps'] / 2, .2),
+            ], outside_value=.01)
 
         self.critic = DQNCritic(agent_params, self.optimizer_spec)
         self.actor = ArgMaxPolicy(self.critic)
@@ -48,21 +58,35 @@ class DQNAgent(object):
         # HINT: the replay buffer used here is `MemoryOptimizedReplayBuffer` in dqn_utils.py
         self.replay_buffer_idx = self.replay_buffer.store_frame(self.last_obs)
 
-        eps = self.exploration.value(self.t)
+        if self.exploration_strategy == 'epsilon_greedy':
+            eps = self.exploration.value(self.t)
+            # TODO use epsilon greedy exploration when selecting action
+            perform_random_action = (np.random.random() < eps) or (self.t < self.learning_starts)
+            if perform_random_action:
+                # HINT: take random action
+                # with probability eps (see np.random.random())
+                # OR if your current step number (see self.t) is less that self.learning_starts
+                action = np.random.randint(0, self.num_actions)
+            else:
+                # HINT: Your actor will take in multiple previous observations ("frames") in order
+                # to deal with the partial observability of the environment. Get the most recent
+                # `frame_history_len` observations using functionality from the replay buffer,
+                # and then use those observations as input to your actor.
+                last_frames = self.replay_buffer.encode_recent_observation()
+                action = self.actor.get_action(last_frames)
 
-        # TODO use epsilon greedy exploration when selecting action
-        perform_random_action = (np.random.random() < eps) or (self.t < self.learning_starts)
-        if perform_random_action:
-            # HINT: take random action 
-            # with probability eps (see np.random.random())
-            # OR if your current step number (see self.t) is less that self.learning_starts
-            action = np.random.randint(0, self.num_actions)
+        elif self.exploration_strategy == 'boltzmann':
+            temperature = self.temperature_schedule.value(self.t)
+            last_frames = self.replay_buffer.encode_recent_observation()
+            q_values = self.critic.qa_values(last_frames, to_numpy=False)
+            dist = torch.softmax(q_values / temperature, dim=-1).cpu().data.numpy()
+            try:
+                action = np.random.choice(self.num_actions, p=dist)
+            except:
+                print(temperature)
+                print(q_values)
         else:
-            # HINT: Your actor will take in multiple previous observations ("frames") in order
-            # to deal with the partial observability of the environment. Get the most recent
-            # `frame_history_len` observations using functionality from the replay buffer,
-            # and then use those observations as input to your actor.
-            action = self.actor.get_action(self.last_obs)
+            raise ValueError("No other than 'epsilon-greedy' or 'boltzmann' exploration strategies is supported!")
         
         # TODO take a step in the environment using the action from the policy
         # HINT1: remember that self.last_obs must always point to the newest/latest observation

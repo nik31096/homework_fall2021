@@ -14,7 +14,8 @@ class Q_Trainer(object):
             'num_agent_train_steps_per_iter': params['num_agent_train_steps_per_iter'],
             'num_critic_updates_per_agent_update': params['num_critic_updates_per_agent_update'],
             'train_batch_size': params['batch_size'],
-            'double_q': params['double_q']
+            'double_q': params['double_q'],
+            'exploration_strategy': 'boltzmann',
         }
 
         env_args = get_env_kwargs(params['env_name'])
