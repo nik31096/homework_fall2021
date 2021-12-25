@@ -21,7 +21,7 @@ class BootstrappedContinuousCritic(nn.Module, BaseCritic):
     Note: batch self.size /n/ is defined at runtime.
     is None
     """
-    def __init__(self, hparams):
+    def __init__(self, hparams, backbone=None):
         super().__init__()
         self.ob_dim = hparams['ob_dim']
         self.ac_dim = hparams['ac_dim']
@@ -42,8 +42,9 @@ class BootstrappedContinuousCritic(nn.Module, BaseCritic):
                 size=self.size,
             )
         else:
-            self.critic_network = ptu.build_cnn(
-                output_size=1
+            self.critic_network = ptu.CNNCritic(
+                output_size=1,
+                activation='relu'
             )
         self.critic_network.to(ptu.device)
         self.loss = nn.MSELoss()

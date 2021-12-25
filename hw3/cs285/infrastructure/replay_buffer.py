@@ -86,8 +86,8 @@ class ReplayBufferAtari(ReplayBuffer):
             obs, next_obs = [], []
             l = len(self.obs)
             for i in range(l, l - batch_size, -1):
-                obs.append(np.concatenate(self.obs[i - self.frame_history_len:i]))
-                next_obs.append(np.concatenate(self.next_obs[i - self.frame_history_len:i]))
+                obs.append(np.concatenate(self.obs[i - self.frame_history_len:i], axis=-1))
+                next_obs.append(np.concatenate(self.next_obs[i - self.frame_history_len:i], axis=-1))
 
             return np.array(obs), self.acs[-batch_size:], self.concatenated_rews[-batch_size:], \
                 np.array(next_obs), self.terminals[-batch_size:]
@@ -104,3 +104,11 @@ class ReplayBufferAtari(ReplayBuffer):
             observations, actions, next_observations, terminals, concatenated_rews, unconcatenated_rews = \
                 convert_listofrollouts(rollouts_to_return)
             return observations, actions, unconcatenated_rews, next_observations, terminals
+
+    def clear(self):
+        self.paths = []
+        self.obs = None
+        self.acs = None
+        self.concatenated_rews = None
+        self.next_obs = None
+        self.terminals = None

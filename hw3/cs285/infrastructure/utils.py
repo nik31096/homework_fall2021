@@ -70,12 +70,11 @@ def sample_trajectory(env, policy, max_path_length, render=False, render_mode='r
                 time.sleep(env.model.opt.timestep)
 
         # use the most recent ob to decide what to do
-
         if policy.img_based:
-            obs.append(np.transpose(ob, [2, 0, 1]))
-            obs_history = np.concatenate(obs[-4:], axis=0)
-            if obs_history.shape[0] < 4:
-                obs_history = np.pad(obs_history, ((0, 4 - obs_history.shape[0]), (0, 0), (0, 0)))
+            obs.append(ob)
+            obs_history = np.concatenate(obs[-4:], axis=-1)
+            if obs_history.shape[-1] < 4:
+                obs_history = np.pad(obs_history, ((0, 0), (0, 0), (0, 4 - obs_history.shape[-1])))
             ac = policy.get_action(obs_history)
         else:
             obs.append(ob)
@@ -88,10 +87,7 @@ def sample_trajectory(env, policy, max_path_length, render=False, render_mode='r
 
         # record result of taking that action
         steps += 1
-        if policy.img_based:
-            next_obs.append(np.transpose(ob, [2, 0, 1]))
-        else:
-            next_obs.append(ob)
+        next_obs.append(ob)
 
         rewards.append(rew)
 

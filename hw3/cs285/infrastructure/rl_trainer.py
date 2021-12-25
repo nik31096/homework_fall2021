@@ -168,6 +168,10 @@ class RL_Trainer(object):
 
             all_logs = self.train_agent()
 
+            if self.agent.actor.img_based and hasattr(self.agent.replay_buffer, 'clear'):
+                print("Clear replay buffer!")
+                self.agent.replay_buffer.clear()
+
             # log/save
             if self.logvideo or self.logmetrics:
                 # perform logging
