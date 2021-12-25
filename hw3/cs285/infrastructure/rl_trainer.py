@@ -162,15 +162,7 @@ class RL_Trainer(object):
             # add collected data to replay buffer
             self.agent.add_to_replay_buffer(paths)
 
-            # train agent (using sampled data from replay buffer)
-            # if itr % print_period == 0:
-            #     print("\nTraining agent...")
-
             all_logs = self.train_agent()
-
-            if self.agent.actor.img_based and hasattr(self.agent.replay_buffer, 'clear'):
-                print("Clear replay buffer!")
-                self.agent.replay_buffer.clear()
 
             # log/save
             if self.logvideo or self.logmetrics:

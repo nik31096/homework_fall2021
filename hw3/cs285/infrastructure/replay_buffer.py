@@ -104,11 +104,3 @@ class ReplayBufferAtari(ReplayBuffer):
             observations, actions, next_observations, terminals, concatenated_rews, unconcatenated_rews = \
                 convert_listofrollouts(rollouts_to_return)
             return observations, actions, unconcatenated_rews, next_observations, terminals
-
-    def clear(self):
-        self.paths = []
-        self.obs = None
-        self.acs = None
-        self.concatenated_rews = None
-        self.next_obs = None
-        self.terminals = None
