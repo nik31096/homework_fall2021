@@ -50,7 +50,7 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
             else:
                 self.logits_na = ptu.CNNPolicy(
                     output_size=self.ac_dim,
-                    activation='leaky_relu'
+                    activation='tanh'
                 )
             self.logits_na.to(ptu.device)
             self.mean_net = None

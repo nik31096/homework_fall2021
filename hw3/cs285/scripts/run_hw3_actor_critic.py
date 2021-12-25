@@ -17,7 +17,7 @@ class AC_Trainer(object):
 
         estimate_advantage_args = {
             'gamma': params['discount'],
-            'advantage_mode': 'gae',
+            'advantage_mode': 'td(0)',
             'lambda': 0.95,
             'standardize_advantages': not(params['dont_standardize_advantages']),
         }
