@@ -75,18 +75,18 @@ class CNNPolicy(nn.Module):
             nn.Conv2d(128, 128, kernel_size=(3, 3)),
             self.activation
         )
-        # self.conv1 = nn.Conv2d(128, 128, kernel_size=(3, 3), padding=1)
-        # self.conv2 = nn.Conv2d(128, 128, kernel_size=(3, 3), padding=1)
-        # self.conv3 = nn.Conv2d(256, 128, kernel_size=(3, 3), padding=1)
+        self.conv1 = nn.Conv2d(128, 128, kernel_size=(3, 3), padding=1)
+        self.conv2 = nn.Conv2d(128, 128, kernel_size=(3, 3), padding=1)
+        self.conv3 = nn.Conv2d(256, 128, kernel_size=(3, 3), padding=1)
         self.linear1 = nn.Linear(4608, 512)
         self.linear2 = nn.Linear(512, self.output_size)
 
     def forward(self, x):
         out = self.preprocess(x)
         out = self.backbone(out)
-        # out1 = self.activation(self.conv1(out))
-        # out2 = self.activation(self.conv2(out))
-        # out = self.activation(self.conv3(torch.cat([out1, out2], dim=-1)))
+        out1 = self.activation(self.conv1(out))
+        out2 = self.activation(self.conv2(out))
+        out = self.activation(self.conv3(torch.cat([out1, out2], dim=-1)))
         out = nn.Flatten()(out)
         out = self.activation(self.linear1(out))
         out = self.output_activation(self.linear2(out))

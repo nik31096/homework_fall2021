@@ -26,6 +26,7 @@ class AC_Trainer(object):
             'num_agent_train_steps_per_iter': params['num_agent_train_steps_per_iter'],
             'num_critic_updates_per_agent_update': params['num_critic_updates_per_agent_update'],
             'num_actor_updates_per_agent_update': params['num_actor_updates_per_agent_update'],
+            'entropy_coeff': 1e-1
         }
 
         agent_params = {**computation_graph_args, **estimate_advantage_args, **train_args}

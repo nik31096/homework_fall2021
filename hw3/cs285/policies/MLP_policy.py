@@ -23,6 +23,7 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
             learning_rate=1e-4,
             training=True,
             nn_baseline=False,
+            entropy_coeff=1e-2,
             img_based=False,
             **kwargs
     ):
@@ -37,6 +38,7 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
         self.learning_rate = learning_rate
         self.training = training
         self.nn_baseline = nn_baseline
+        self.entropy_coeff = entropy_coeff
         self.img_based = img_based
 
         if self.discrete:
@@ -144,7 +146,7 @@ class MLPPolicyAC(MLPPolicy):
 
         action_dist = self.forward(observations)
         log_probs = action_dist.log_prob(actions)
-        loss = -torch.mean(log_probs*adv_n)
+        loss = - torch.mean(log_probs*adv_n) - self.entropy_coeff*torch.mean(action_dist.entropy())
 
         self.optimizer.zero_grad()
         loss.backward()

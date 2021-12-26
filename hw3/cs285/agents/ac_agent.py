@@ -29,6 +29,7 @@ class ACAgent(BaseAgent):
             size=self.agent_params['size'],
             discrete=self.agent_params['discrete'],
             learning_rate=self.agent_params['learning_rate'],
+            entropy_coeff=self.agent_params['entropy_coeff'],
             img_based=self.agent_params['img_based']
         )
         self.critic = BootstrappedContinuousCritic(self.agent_params)
