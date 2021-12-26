@@ -1,4 +1,6 @@
 import numpy as np
+import torch
+
 import time
 import copy
 
@@ -72,9 +74,9 @@ def sample_trajectory(env, policy, max_path_length, render=False, render_mode='r
         # use the most recent ob to decide what to do
         if policy.img_based:
             obs.append(ob)
-            obs_history = np.concatenate(obs[-4:], axis=-1)
+            obs_history = np.concatenate(obs[-4:], axis=2)
             if obs_history.shape[-1] < 4:
-                obs_history = np.pad(obs_history, ((0, 0), (0, 0), (0, 4 - obs_history.shape[-1])))
+                obs_history = np.pad(obs_history, ((0, 0), (0, 0), (4 - obs_history.shape[-1], 0)))
             ac = policy.get_action(obs_history)
         else:
             obs.append(ob)
@@ -199,3 +201,63 @@ def add_noise(data_inp, noiseToSignal=0.01):
             0, np.absolute(std_of_noise[j]), (data.shape[0],)))
 
     return data
+
+
+class Normalizer(object):
+    # Taken from https://github.com/openai/baselines/blob/master/baselines/common/running_mean_std.py
+    # https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Parallel_algorithm
+    def __init__(self, epsilon=1e-4, shape=(), numpy=False, device='cpu'):
+        self.numpy = numpy
+        if self.numpy:
+            self.mean = np.zeros(shape, 'float32')
+            self.var = np.ones(shape, 'float32')
+        else:
+            self.mean = torch.zeros(shape, dtype=torch.float32).to(device)
+            self.var = torch.ones(shape, dtype=torch.float32).to(device)
+
+        self.count = epsilon
+
+    def normalize(self, inputs, subtract_mean=True):
+        normalized_inputs = inputs / (self.var + 1e-6)
+        if subtract_mean:
+            normalized_inputs = normalized_inputs - self.mean
+
+        return normalized_inputs
+
+    def update(self, x):
+        batch_mean = x.mean()
+        batch_var = x.std()
+        batch_count = x.shape[0]
+        delta = batch_mean - self.mean
+        tot_count = self.count + batch_count
+
+        new_mean = self.mean + delta * batch_count / tot_count
+        m_a = self.var * self.count
+        m_b = batch_var * batch_count
+        if not self.numpy:
+            delta_square = torch.square(delta)
+        else:
+            delta_square = np.square(delta)
+        M2 = m_a + m_b + delta_square * self.count * batch_count / tot_count
+        new_var = M2 / tot_count
+        new_count = tot_count
+
+        self.mean = new_mean
+        self.var = new_var
+        self.count = new_count
+
+    def save(self, path, name):
+        if not self.numpy:
+            torch.save(self.mean.cpu(), f'{path}/{name}_norm_mean.pt')
+            torch.save(self.var.cpu(), f'{path}/{name}_norm_std.pt')
+        else:
+            np.save(f'{path}/{name}_norm_mean.npy', self.mean)
+            np.save(f'{path}/{name}_norm_std.npy', self.var)
+
+    def load(self, path, name):
+        if not self.numpy:
+            self.mean = torch.load(f'{path}/{name}_norm_mean.pt')
+            self.var = torch.load(f'{path}/{name}_norm_std.pt')
+        else:
+            self.mean = np.load(f'{path}/{name}_norm_mean.npy')
+            self.var = torch.load(f'{path}/{name}_norm_std.npy')

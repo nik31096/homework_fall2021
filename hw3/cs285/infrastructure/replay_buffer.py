@@ -16,6 +16,8 @@ class ReplayBuffer(object):
         for path in paths:
             self.paths.append(path)
 
+        self.paths = self.paths[-self.max_size:]
+
         # convert new rollouts into their component arrays, and append them onto our arrays
         observations, actions, next_observations, terminals, concatenated_rews, unconcatenated_rews = \
             convert_listofrollouts(paths)
@@ -33,15 +35,9 @@ class ReplayBuffer(object):
         else:
             self.obs = np.concatenate([self.obs, observations])[-self.max_size:]
             self.acs = np.concatenate([self.acs, actions])[-self.max_size:]
-            self.next_obs = np.concatenate(
-                [self.next_obs, next_observations]
-            )[-self.max_size:]
-            self.terminals = np.concatenate(
-                [self.terminals, terminals]
-            )[-self.max_size:]
-            self.concatenated_rews = np.concatenate(
-                [self.concatenated_rews, concatenated_rews]
-            )[-self.max_size:]
+            self.next_obs = np.concatenate([self.next_obs, next_observations])[-self.max_size:]
+            self.terminals = np.concatenate([self.terminals, terminals])[-self.max_size:]
+            self.concatenated_rews = np.concatenate([self.concatenated_rews, concatenated_rews])[-self.max_size:]
 
     def sample_random_rollouts(self, num_rollouts):
         rand_indices = np.random.permutation(len(self.paths))[:num_rollouts]
@@ -55,7 +51,7 @@ class ReplayBuffer(object):
                self.next_obs.shape[0] == self.terminals.shape[0]
         rand_indices = np.random.permutation(self.obs.shape[0])[:batch_size]
         return self.obs[rand_indices], self.acs[rand_indices], self.concatenated_rews[rand_indices],\
-               self.next_obs[rand_indices], self.terminals[rand_indices]
+            self.next_obs[rand_indices], self.terminals[rand_indices]
 
     def sample_recent_data(self, batch_size=1, concat_rew=True):
         if concat_rew:
@@ -85,7 +81,7 @@ class ReplayBufferAtari(ReplayBuffer):
         if concat_rew:
             obs, next_obs = [], []
             l = len(self.obs)
-            for i in range(l, l - batch_size, -1):
+            for i in range(l - batch_size + 1, l+1):
                 obs.append(np.concatenate(self.obs[i - self.frame_history_len:i], axis=-1))
                 next_obs.append(np.concatenate(self.next_obs[i - self.frame_history_len:i], axis=-1))
 

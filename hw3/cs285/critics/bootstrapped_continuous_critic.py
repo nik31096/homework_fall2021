@@ -42,9 +42,10 @@ class BootstrappedContinuousCritic(nn.Module, BaseCritic):
                 size=self.size,
             )
         else:
-            self.critic_network = ptu.CNNCritic(
+            self.critic_network = ptu.build_cnn(
                 output_size=1,
-                activation='relu'
+                activation='relu',
+                backbone=backbone
             )
         self.critic_network.to(ptu.device)
         self.loss = nn.MSELoss()

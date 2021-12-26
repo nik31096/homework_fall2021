@@ -25,6 +25,7 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
             nn_baseline=False,
             entropy_coeff=1e-2,
             img_based=False,
+            backbone=None,
             **kwargs
     ):
         super().__init__(**kwargs)
@@ -50,9 +51,10 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
                     size=self.size
                 )
             else:
-                self.logits_na = ptu.CNNPolicy(
+                self.logits_na = ptu.build_cnn(
                     output_size=self.ac_dim,
-                    activation='tanh'
+                    activation='relu',
+                    backbone=backbone
                 )
             self.logits_na.to(ptu.device)
             self.mean_net = None
@@ -146,7 +148,7 @@ class MLPPolicyAC(MLPPolicy):
 
         action_dist = self.forward(observations)
         log_probs = action_dist.log_prob(actions)
-        loss = - torch.mean(log_probs*adv_n) - self.entropy_coeff*torch.mean(action_dist.entropy())
+        loss = - torch.mean(log_probs*adv_n + self.entropy_coeff*torch.mean(action_dist.entropy()))
 
         self.optimizer.zero_grad()
         loss.backward()
