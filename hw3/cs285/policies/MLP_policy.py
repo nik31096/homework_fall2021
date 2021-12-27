@@ -53,7 +53,7 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
             else:
                 self.logits_na = ptu.build_cnn(
                     output_size=self.ac_dim,
-                    activation='relu',
+                    activation='leaky_relu',
                     backbone=backbone
                 )
             self.logits_na.to(ptu.device)
@@ -144,14 +144,19 @@ class MLPPolicyAC(MLPPolicy):
             actions = ptu.from_numpy(actions)
 
         if not isinstance(adv_n, torch.Tensor):
-            adv_n = ptu.from_numpy(adv_n)
+            adv_n = ptu.from_numpy(adv_n).detach()
 
         action_dist = self.forward(observations)
         log_probs = action_dist.log_prob(actions)
-        loss = - torch.mean(log_probs*adv_n + self.entropy_coeff*torch.mean(action_dist.entropy()))
+        loss = -torch.mean(log_probs*adv_n + self.entropy_coeff*action_dist.entropy())
 
         self.optimizer.zero_grad()
         loss.backward()
+        if self.discrete:
+            nn.utils.clip_grad_norm_(self.logits_na.parameters(), 0.5)
+        else:
+            nn.utils.clip_grad_norm_(self.mean_net.parameters(), 0.5)
+            nn.utils.clip_grad_norm_(self.logstd, 0.5)
         self.optimizer.step()
 
         return loss.item()
