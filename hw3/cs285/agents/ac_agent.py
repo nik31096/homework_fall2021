@@ -22,10 +22,11 @@ class ACAgent(BaseAgent):
         self._lambda = self.agent_params.get('lambda', None)
         self.n_step = self.agent_params.get('n_step', None)
         self.standardize_advantages = self.agent_params['standardize_advantages']
-        self.reward_normalizer = Normalizer(shape=(1,), numpy=True)
+        # self.reward_normalizer = Normalizer(shape=(1,), numpy=True)
 
         if self.agent_params['img_based']:
-            backbone = build_backbone_cnn(activation='relu')
+            self.feature_size = 512
+            backbone = build_backbone_cnn(activation='relu', feature_size=self.feature_size)
         else:
             backbone = None
 
@@ -38,18 +39,24 @@ class ACAgent(BaseAgent):
             learning_rate=self.agent_params['learning_rate'],
             entropy_coeff=self.agent_params['entropy_coeff'],
             img_based=self.agent_params['img_based'],
-            backbone=backbone
+            backbone=backbone,
+            feature_size=self.feature_size
         )
-        self.critic = BootstrappedContinuousCritic(self.agent_params, backbone=backbone)
 
-        if self.agent_params['img_based']:
-            self.replay_buffer = ReplayBufferAtari()
-        else:
-            self.replay_buffer = ReplayBuffer()
+        self.critic = BootstrappedContinuousCritic(
+            self.agent_params,
+            backbone=backbone,
+            feature_size=self.feature_size
+        )
+        self.replay_buffer = ReplayBuffer()
+        # if self.agent_params['img_based']:
+        #     self.replay_buffer = ReplayBufferAtari(frame_history_len=1)
+        # else:
+        #     self.replay_buffer = ReplayBuffer()
 
     def train(self, ob_no, ac_na, re_n, next_ob_no, terminal_n):
-        self.reward_normalizer.update(re_n)
-        re_n = self.reward_normalizer.normalize(re_n)
+        # self.reward_normalizer.update(re_n)
+        # re_n = self.reward_normalizer.normalize(re_n)
         for _ in range(self.agent_params['num_critic_updates_per_agent_update']):
             critic_loss = self.critic.update(ob_no, ac_na, re_n, next_ob_no, terminal_n)
 

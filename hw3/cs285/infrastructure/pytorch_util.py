@@ -55,27 +55,27 @@ def build_mlp(
     return nn.Sequential(*layers)
 
 
-def build_backbone_cnn(activation: Activation = 'relu'):
+def build_backbone_cnn(activation: Activation = 'relu', feature_size: int = 512):
     if isinstance(activation, str):
         activation = _str_to_activation[activation]
 
     return nn.Sequential(
         PreprocessAtari(),
-        nn.Conv2d(4, 64, kernel_size=(8, 8), stride=(4, 4)),
+        nn.Conv2d(4, 32, kernel_size=8, stride=4),
+        activation,
+        nn.Conv2d(32, 64, kernel_size=4, stride=2),
         activation,
         nn.Conv2d(64, 64, kernel_size=(3, 3)),
         activation,
-        nn.Conv2d(64, 128, kernel_size=(4, 4), stride=(2, 2)),
-        activation,
-        nn.Conv2d(128, 128, kernel_size=(3, 3)),
-        activation,
-        nn.Conv2d(128, 128, kernel_size=(3, 3)),
+        nn.Flatten(),
+        nn.Linear(3136, feature_size),
         activation
     )
 
 
 def build_cnn(
         output_size: int,
+        feature_size: int,
         activation: Activation = 'relu',
         output_activation: Activation = 'identity',
         backbone=None
@@ -86,24 +86,11 @@ def build_cnn(
         output_activation = _str_to_activation[output_activation]
 
     if backbone is None:
-        backbone = nn.Sequential(
-            PreprocessAtari(),
-            nn.Conv2d(4, 64, kernel_size=(8, 8), stride=(4, 4)),
-            activation,
-            nn.Conv2d(64, 64, kernel_size=(3, 3)),
-            activation,
-            nn.Conv2d(64, 128, kernel_size=(4, 4), stride=(2, 2)),
-            activation,
-            nn.Conv2d(128, 128, kernel_size=(3, 3)),
-            activation
-        )
+        backbone = build_backbone_cnn(activation=activation, feature_size=feature_size)
 
     return nn.Sequential(
         backbone,
-        nn.Flatten(),
-        nn.Linear(2048, 512),
-        activation,
-        nn.Linear(512, output_size),
+        nn.Linear(feature_size, output_size),
         output_activation
     )
 

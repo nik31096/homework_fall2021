@@ -26,6 +26,7 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
             entropy_coeff=1e-2,
             img_based=False,
             backbone=None,
+            feature_size=512,
             **kwargs
     ):
         super().__init__(**kwargs)
@@ -54,7 +55,8 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
                 self.logits_na = ptu.build_cnn(
                     output_size=self.ac_dim,
                     activation='leaky_relu',
-                    backbone=backbone
+                    backbone=backbone,
+                    feature_size=feature_size
                 )
             self.logits_na.to(ptu.device)
             self.mean_net = None

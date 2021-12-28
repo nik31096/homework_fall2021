@@ -57,6 +57,7 @@ def sample_trajectory(env, policy, max_path_length, render=False, render_mode='r
     ob = env.reset()
 
     # init vars
+    obs_frames, next_obs_frames = [], []
     obs, acs, rewards, next_obs, terminals, image_obs = [], [], [], [], [], []
     steps = 0
     while True:
@@ -77,11 +78,14 @@ def sample_trajectory(env, policy, max_path_length, render=False, render_mode='r
             obs_history = np.concatenate(obs[-4:], axis=2)
             if obs_history.shape[-1] < 4:
                 obs_history = np.pad(obs_history, ((0, 0), (0, 0), (4 - obs_history.shape[-1], 0)))
+            obs_frames.append(obs_history)
             ac = policy.get_action(obs_history)
         else:
             obs.append(ob)
             ac = policy.get_action(ob)
-        ac = ac[0]
+
+        if len(ac.shape) > 0:
+            ac = ac[0]
         acs.append(ac)
 
         # take that action and record results
@@ -90,6 +94,11 @@ def sample_trajectory(env, policy, max_path_length, render=False, render_mode='r
         # record result of taking that action
         steps += 1
         next_obs.append(ob)
+        if policy.img_based:
+            next_obs_history = np.concatenate(next_obs[-4:], axis=2)
+            if next_obs_history.shape[-1] < 4:
+                next_obs_history = np.pad(next_obs_history, ((0, 0), (0, 0), (4 - next_obs_history.shape[-1], 0)))
+            next_obs_frames.append(next_obs_history)
 
         rewards.append(rew)
 
@@ -101,7 +110,10 @@ def sample_trajectory(env, policy, max_path_length, render=False, render_mode='r
         if rollout_done:
             break
 
-    return Path(obs, image_obs, acs, rewards, next_obs, terminals)
+    if policy.img_based:
+        return Path(obs_frames, image_obs, acs, rewards, next_obs_frames, terminals)
+    else:
+        return Path(obs, image_obs, acs, rewards, next_obs, terminals)
 
 
 def sample_trajectories(env, policy, min_timesteps_per_batch, max_path_length, render=False, render_mode='rgb_array'):
@@ -144,12 +156,13 @@ def Path(obs, image_obs, acs, rewards, next_obs, terminals):
     Take info (separate arrays) from a single rollout
     and return it in a single dictionary
     """
-    if image_obs != []:
+    if image_obs:
         image_obs = np.stack(image_obs, axis=0)
-    return {"observation" : np.array(obs, dtype=np.float32),
-            "image_obs" : np.array(image_obs, dtype=np.uint8),
-            "reward" : np.array(rewards, dtype=np.float32),
-            "action" : np.array(acs, dtype=np.float32),
+
+    return {"observation": np.array(obs, dtype=np.float32),
+            "image_obs": np.array(image_obs, dtype=np.uint8),
+            "reward": np.array(rewards, dtype=np.float32),
+            "action": np.array(acs, dtype=np.float32),
             "next_observation": np.array(next_obs, dtype=np.float32),
             "terminal": np.array(terminals, dtype=np.float32)}
 
