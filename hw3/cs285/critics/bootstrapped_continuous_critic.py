@@ -115,6 +115,7 @@ class BootstrappedContinuousCritic(nn.Module, BaseCritic):
 
                 self.optimizer.zero_grad()
                 loss.backward()
+                nn.utils.clip_grad_norm(self.critic_network.parameters(), 0.5)
                 self.optimizer.step()
 
         return loss.item()

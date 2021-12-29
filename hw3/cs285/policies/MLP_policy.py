@@ -54,7 +54,7 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
             else:
                 self.logits_na = ptu.build_cnn(
                     output_size=self.ac_dim,
-                    activation='leaky_relu',
+                    activation='relu',
                     backbone=backbone,
                     feature_size=feature_size
                 )

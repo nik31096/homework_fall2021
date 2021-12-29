@@ -28,6 +28,7 @@ class ACAgent(BaseAgent):
             self.feature_size = 512
             backbone = build_backbone_cnn(activation='relu', feature_size=self.feature_size)
         else:
+            self.feature_size = None
             backbone = None
 
         self.actor = MLPPolicyAC(
@@ -48,7 +49,7 @@ class ACAgent(BaseAgent):
             backbone=backbone,
             feature_size=self.feature_size
         )
-        self.replay_buffer = ReplayBuffer()
+        self.replay_buffer = ReplayBuffer(max_size=10000)
         # if self.agent_params['img_based']:
         #     self.replay_buffer = ReplayBufferAtari(frame_history_len=1)
         # else:

@@ -71,7 +71,6 @@ def sample_trajectory(env, policy, max_path_length, render=False, render_mode='r
             if 'human' in render_mode:
                 env.render(mode=render_mode)
                 time.sleep(env.model.opt.timestep)
-
         # use the most recent ob to decide what to do
         if policy.img_based:
             obs.append(ob)
@@ -89,13 +88,13 @@ def sample_trajectory(env, policy, max_path_length, render=False, render_mode='r
         acs.append(ac)
 
         # take that action and record results
-        ob, rew, done, _ = env.step(ac)
+        next_ob, rew, done, _ = env.step(ac)
 
         # record result of taking that action
         steps += 1
-        next_obs.append(ob)
+        next_obs.append(next_ob)
         if policy.img_based:
-            next_obs_history = np.concatenate(next_obs[-4:], axis=2)
+            next_obs_history = np.concatenate([obs_history[..., 1:], next_ob], axis=-1)
             if next_obs_history.shape[-1] < 4:
                 next_obs_history = np.pad(next_obs_history, ((0, 0), (0, 0), (4 - next_obs_history.shape[-1], 0)))
             next_obs_frames.append(next_obs_history)
@@ -109,6 +108,8 @@ def sample_trajectory(env, policy, max_path_length, render=False, render_mode='r
 
         if rollout_done:
             break
+
+        ob = next_ob
 
     if policy.img_based:
         return Path(obs_frames, image_obs, acs, rewards, next_obs_frames, terminals)
