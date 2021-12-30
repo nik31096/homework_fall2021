@@ -146,7 +146,7 @@ class MLPPolicyAC(MLPPolicy):
             actions = ptu.from_numpy(actions)
 
         if not isinstance(adv_n, torch.Tensor):
-            adv_n = ptu.from_numpy(adv_n).detach()
+            adv_n = ptu.from_numpy(adv_n)
 
         action_dist = self.forward(observations)
         log_probs = action_dist.log_prob(actions)

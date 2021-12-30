@@ -49,7 +49,7 @@ class ACAgent(BaseAgent):
             backbone=backbone,
             feature_size=self.feature_size
         )
-        self.replay_buffer = ReplayBuffer(max_size=10000)
+        self.replay_buffer = ReplayBuffer(max_size=1000)
         # if self.agent_params['img_based']:
         #     self.replay_buffer = ReplayBufferAtari(frame_history_len=1)
         # else:
