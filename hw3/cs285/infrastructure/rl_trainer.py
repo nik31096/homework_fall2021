@@ -16,6 +16,8 @@ from cs285.infrastructure.logger import Logger
 
 from cs285.agents.dqn_agent import DQNAgent
 from cs285.infrastructure.dqn_utils import get_wrapper_by_name, register_custom_envs, wrap_deepmind
+from cs285.infrastructure.vec_frame_stack import VecFrameStack
+from cs285.infrastructure.base_vec_env import DummyVecEnv
 
 # how many rollouts to save as videos to tensorboard
 MAX_NVIDEO = 2
@@ -54,6 +56,8 @@ class RL_Trainer(object):
                 video_callable=(None if self.params['video_log_freq'] > 0 else False),
             )
             self.env = params['env_wrappers'](self.env)
+            self.env = DummyVecEnv([lambda: self.env])
+            self.env = VecFrameStack(self.env, n_stack=4)
             self.mean_episode_reward = -float('nan')
             self.best_mean_episode_reward = -float('inf')
         if 'non_atari_colab_env' in self.params and self.params['video_log_freq'] > 0:

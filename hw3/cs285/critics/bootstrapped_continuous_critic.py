@@ -106,11 +106,11 @@ class BootstrappedContinuousCritic(nn.Module, BaseCritic):
 
         for target_update in range(self.num_target_updates):
             with torch.no_grad():
-                next_values = self.critic_network(next_ob_no).squeeze()
+                next_values = self(next_ob_no)
                 targets = reward_n + self.gamma * (1 - terminal_n) * next_values
 
             for step in range(self.num_grad_steps_per_target_update):
-                values = self.critic_network(ob_no).squeeze()
+                values = self(ob_no)
                 loss = self.loss(values, targets)
 
                 self.optimizer.zero_grad()

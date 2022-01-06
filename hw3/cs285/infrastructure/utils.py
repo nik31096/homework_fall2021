@@ -72,19 +72,22 @@ def sample_trajectory(env, policy, max_path_length, render=False, render_mode='r
                 env.render(mode=render_mode)
                 time.sleep(env.model.opt.timestep)
         # use the most recent ob to decide what to do
-        if policy.img_based:
-            obs.append(ob)
-            obs_history = np.concatenate(obs[-4:], axis=2)
-            if obs_history.shape[-1] < 4:
-                obs_history = np.pad(obs_history, ((0, 0), (0, 0), (4 - obs_history.shape[-1], 0)))
-            obs_frames.append(obs_history)
-            ac = policy.get_action(obs_history)
-        else:
-            obs.append(ob)
-            ac = policy.get_action(ob)
+        # if policy.img_based:
+        #     obs.append(ob)
+        #     obs_history = np.concatenate(obs[-4:], axis=2)
+        #     if obs_history.shape[-1] < 4:
+        #         obs_history = np.pad(obs_history, ((0, 0), (0, 0), (4 - obs_history.shape[-1], 0)))
+        #     obs_frames.append(obs_history)
+        #     ac = policy.get_action(obs_history)
+        # else:
+        #     obs.append(ob)
+        #     ac = policy.get_action(ob)
+        obs.append(ob)
+        ac = policy.get_action(ob)
 
-        if len(ac.shape) > 0:
-            ac = ac[0]
+        # if len(ac.shape) > 0:
+        #     print(ac.shape)
+        #     ac = ac[0]
         acs.append(ac)
 
         # take that action and record results
@@ -93,11 +96,11 @@ def sample_trajectory(env, policy, max_path_length, render=False, render_mode='r
         # record result of taking that action
         steps += 1
         next_obs.append(next_ob)
-        if policy.img_based:
-            next_obs_history = np.concatenate([obs_history[..., 1:], next_ob], axis=-1)
-            if next_obs_history.shape[-1] < 4:
-                next_obs_history = np.pad(next_obs_history, ((0, 0), (0, 0), (4 - next_obs_history.shape[-1], 0)))
-            next_obs_frames.append(next_obs_history)
+        # if policy.img_based:
+        #     next_obs_history = np.concatenate([obs_history[..., 1:], next_ob], axis=-1)
+        #     if next_obs_history.shape[-1] < 4:
+        #         next_obs_history = np.pad(next_obs_history, ((0, 0), (0, 0), (4 - next_obs_history.shape[-1], 0)))
+        #     next_obs_frames.append(next_obs_history)
 
         rewards.append(rew)
 
@@ -111,10 +114,11 @@ def sample_trajectory(env, policy, max_path_length, render=False, render_mode='r
 
         ob = next_ob
 
-    if policy.img_based:
-        return Path(obs_frames, image_obs, acs, rewards, next_obs_frames, terminals)
-    else:
-        return Path(obs, image_obs, acs, rewards, next_obs, terminals)
+    # if policy.img_based:
+    #     return Path(obs_frames, image_obs, acs, rewards, next_obs_frames, terminals)
+    # else:
+    #     return Path(obs, image_obs, acs, rewards, next_obs, terminals)
+    return Path(obs, image_obs, acs, rewards, next_obs, terminals)
 
 
 def sample_trajectories(env, policy, min_timesteps_per_batch, max_path_length, render=False, render_mode='rgb_array'):
@@ -160,12 +164,12 @@ def Path(obs, image_obs, acs, rewards, next_obs, terminals):
     if image_obs:
         image_obs = np.stack(image_obs, axis=0)
 
-    return {"observation": np.array(obs, dtype=np.float32),
-            "image_obs": np.array(image_obs, dtype=np.uint8),
-            "reward": np.array(rewards, dtype=np.float32),
-            "action": np.array(acs, dtype=np.float32),
-            "next_observation": np.array(next_obs, dtype=np.float32),
-            "terminal": np.array(terminals, dtype=np.float32)}
+    return {"observation": np.concatenate(obs).astype(np.float32),
+            "image_obs": None if not image_obs else np.concatenate(image_obs).astype(np.uint8),
+            "reward": np.concatenate(rewards).astype(np.float32),
+            "action": np.array(acs).astype(np.float32),
+            "next_observation": np.concatenate(next_obs).astype(np.float32),
+            "terminal": np.array(terminals).astype(np.float32)}
 
 
 def convert_listofrollouts(paths):

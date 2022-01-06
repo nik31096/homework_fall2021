@@ -149,7 +149,7 @@ class MLPPolicyAC(MLPPolicy):
             adv_n = ptu.from_numpy(adv_n)
 
         action_dist = self.forward(observations)
-        log_probs = action_dist.log_prob(actions)
+        log_probs = action_dist.log_prob(actions.squeeze())
         loss = -torch.mean(log_probs*adv_n.detach() + self.entropy_coeff*action_dist.entropy())
 
         self.optimizer.zero_grad()
