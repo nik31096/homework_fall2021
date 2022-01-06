@@ -1,4 +1,5 @@
 import numpy as np
+import cv2
 import gym
 from gym import spaces
 
@@ -123,14 +124,19 @@ class MaxAndSkipEnv(gym.Wrapper):
         return self.env.reset(**kwargs)
 
 
-def _process_frame84(frame):
-    import cv2
+def _process_frame84_v1(frame):
     img = np.reshape(frame, [210, 160, 3]).astype(np.float32)
     img = img[:, :, 0] * 0.299 + img[:, :, 1] * 0.587 + img[:, :, 2] * 0.114
     resized_screen = cv2.resize(img, (84, 110),  interpolation=cv2.INTER_LINEAR)
     x_t = resized_screen[18:102, :]
     x_t = np.reshape(x_t, [84, 84, 1])
     return x_t.astype(np.uint8)
+
+
+def _process_frame84_v2(frame):
+    frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
+    frame = cv2.resize(frame, (84, 84), interpolation=cv2.INTER_AREA)
+    return frame[:, :, None]
 
 
 class ProcessFrame84(gym.Wrapper):
@@ -140,10 +146,10 @@ class ProcessFrame84(gym.Wrapper):
 
     def step(self, action):
         obs, reward, done, info = self.env.step(action)
-        return _process_frame84(obs), reward, done, info
+        return _process_frame84_v2(obs), reward, done, info
 
     def reset(self):
-        return _process_frame84(self.env.reset())
+        return _process_frame84_v2(self.env.reset())
 
 
 class ClipRewardEnv(gym.RewardWrapper):

@@ -1,7 +1,7 @@
 from collections import OrderedDict
 
 from cs285.critics.bootstrapped_continuous_critic import BootstrappedContinuousCritic
-from cs285.infrastructure.replay_buffer import ReplayBuffer, ReplayBufferAtari
+from cs285.infrastructure.replay_buffer import ReplayBuffer
 from cs285.infrastructure.utils import *
 from cs285.policies.MLP_policy import MLPPolicyAC
 from cs285.agents.base_agent import BaseAgent
